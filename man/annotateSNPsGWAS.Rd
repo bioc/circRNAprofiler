@@ -4,8 +4,12 @@
 \alias{annotateSNPsGWAS}
 \title{Annotate GWAS SNPs}
 \usage{
-annotateSNPsGWAS(targets, assembly = "hg19", makeCurrent = FALSE,
-  pathToTraits = NULL)
+annotateSNPsGWAS(
+  targets,
+  assembly = "hg19",
+  makeCurrent = FALSE,
+  pathToTraits = NULL
+)
 }
 \arguments{
 \item{targets}{A list containing the target regions to analyze.
@@ -37,7 +41,7 @@ A list.
 The function annotateSNPsGWAS() annotates GWAS SNPs located
 in the region flanking the back-spliced junctions of each circRNA.
 SNPs information including the corresponding genomic coordinates are
-retrived from the GWAs catalog database.
+retrieved from the GWAs catalog database.
 The user can restric the analysis to specific traits/diseases. These must go
 in the file traits.txt. If this file is absent or empty, all traits in the
 GWAS catalog are considered in the analysis.
@@ -54,6 +58,7 @@ data("gtf")
 annotatedBSJs <- annotateBSJs(mergedBSJunctions[1, ], gtf)
 
 # Get genome
+if (requireNamespace("BSgenome.Hsapiens.UCSC.hg19", quietly = TRUE)){
 genome <- BSgenome::getBSgenome("BSgenome.Hsapiens.UCSC.hg19")
 
 # Retrieve targets
@@ -66,6 +71,10 @@ targets <- getSeqsFromGRs(
     )
 
 # Annotate GWAS SNPs
+
 snpsGWAS <- annotateSNPsGWAS(targets, assembly = "hg19")
+
+}
+
 
 }

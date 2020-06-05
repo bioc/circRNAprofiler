@@ -4,9 +4,14 @@
 \alias{getMiRsites}
 \title{Screen target sequences for miR binding sites}
 \usage{
-getMiRsites(targets, miRspeciesCode = "hsa",
-  miRBaseLatestRelease = TRUE, totalMatches = 7,
-  maxNonCanonicalMatches = 1, pathToMiRs = NULL)
+getMiRsites(
+  targets,
+  miRspeciesCode = "hsa",
+  miRBaseLatestRelease = TRUE,
+  totalMatches = 7,
+  maxNonCanonicalMatches = 1,
+  pathToMiRs = NULL
+)
 }
 \arguments{
 \item{targets}{A list containing the target sequences to analyze.
@@ -29,7 +34,8 @@ in the working directory. Default value is TRUE.}
 \item{totalMatches}{An integer specifying the total number of matches that
 have to be found between the seed region of the miR and the seed site of the
 target sequence. If the total number of matches found is less than the
-cut-off, the seed site is discarded. Default value is 7.}
+cut-off, the seed site is discarded. The maximun number of possible matches
+is 7. Default value is 7.}
 
 \item{maxNonCanonicalMatches}{An integer specifying the max number of
 non-canonical matches (G:U) allowed between the seed region of the miR and
@@ -69,6 +75,7 @@ data("gtf")
 annotatedBSJs <- annotateBSJs(mergedBSJunctions[1, ], gtf)
 
 # Get genome
+if (requireNamespace("BSgenome.Hsapiens.UCSC.hg19", quietly = TRUE)){
 genome <- BSgenome::getBSgenome("BSgenome.Hsapiens.UCSC.hg19")
 
 # Retrieve target sequences.
@@ -87,5 +94,7 @@ miRsites <- getMiRsites(
    totalMatches = 6,
    maxNonCanonicalMatches = 1,
    pathToMiRs )
+}
+
 
 }

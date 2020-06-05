@@ -4,12 +4,14 @@
 \name{gwasTraits}
 \alias{gwasTraits}
 \title{gwasTraits}
-\format{A data frame with 653 rows and 1 columns
+\format{
+A data frame with 653 rows and 1 columns
 \describe{
     \item{id}{is the trait/disease as reported in the GWAS catalog}
-}}
+}
+}
 \usage{
-gwasTraits
+data(gwasTraits)
 }
 \description{
 A data frame containing the traits/disease extracted on the 31th October 2018

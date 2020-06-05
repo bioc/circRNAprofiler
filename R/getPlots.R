@@ -19,6 +19,12 @@
 #' will be displayed in the legend of the plot. Deafult value is "background".
 #'
 #' @param title A character string specifying the title of the plot.
+#' 
+#' @param setyLim A logical specifying whether to set y scale limits.
+#' If TRUE the value in ylim will be used. Deafult value is FALSE.
+#'
+#' @param ylim An integer specifying the lower and upper y axis limits
+#' Deafult values are c(0, 8).
 #'
 #' @return A ggplot object.
 #'
@@ -58,7 +64,9 @@ plotLenIntrons <-
         annotatedBBSJs,
         df1Name = "foreground",
         df2Name = "background",
-        title = "") {
+        title = "",
+        setyLim = FALSE,
+        ylim = c(0, 8)) {
         # Reshape the data frame
         reshForeground <- annotatedFBSJs %>%
             dplyr::mutate(circRNA = rep("foreground", nrow(annotatedFBSJs))) %>%
@@ -94,9 +102,18 @@ plotLenIntrons <-
         combinedFB <- rbind(reshForeground, reshBackground)
         combinedFB$length <- as.numeric(combinedFB$length)
         # Plot
+        if(setyLim){
+            ymin <- ylim[1]
+            ymax <- ylim[2]
+        }else{
+            ymin<- 0
+            ymax<- base::max(log10(combinedFB$length), na.rm = TRUE)
+        }
+        
         p <-
-            ggplot(combinedFB, aes(x = .data$feature, y = log10(length))) +
+            ggplot(combinedFB, aes(x = .data$feature, y = log10(.data$length)))+
             geom_boxplot(aes(fill = .data$circRNA), na.rm = TRUE) +
+            ylim(ymin,ymax )+
             labs(title = title, x = "", y = "Log10 length (nt)") +
             theme_classic() +
             theme(plot.title = element_text(hjust = 0.5),
@@ -127,6 +144,12 @@ plotLenIntrons <-
 #' will be displayed in the legend of the plot.
 #'
 #' @param title A character string specifying the title of the plot
+#' 
+#' @param setyLim A logical specifying whether to set y scale limits.
+#' If TRUE the value in ylim will be used. Deafult value is FALSE.
+#'
+#' @param ylim An integer specifying the lower and upper y axis limits
+#' Deafult values are c(0, 8).
 #'
 #' @return A ggplot object.
 #'
@@ -167,7 +190,9 @@ plotLenBSEs <-
         annotatedBBSJs,
         df1Name = "foreground",
         df2Name = "background",
-        title = "") {
+        title = "",
+        setyLim = FALSE,
+        ylim = c(0, 8)) {
         # Reshape the data frame
         reshForeground <- annotatedFBSJs %>%
             dplyr::mutate(circRNA = rep("foreground", nrow(annotatedFBSJs))) %>%
@@ -203,9 +228,17 @@ plotLenBSEs <-
         combinedFB <- rbind(reshForeground, reshBackground)
         combinedFB$length <- as.numeric(combinedFB$length)
         # Plot
+        if(setyLim){
+            ymin <- ylim[1]
+            ymax <- ylim[2]
+        }else{
+            ymin<- 0
+            ymax<- base::max(log10(combinedFB$length), na.rm = TRUE)
+        }
         p <-
-            ggplot(combinedFB, aes(x = .data$feature, y = log10(length))) +
+            ggplot(combinedFB, aes(x = .data$feature, y = log10(.data$length))) +
             geom_boxplot(aes(fill = .data$circRNA), na.rm = TRUE) +
+            ylim(ymin,ymax)+
             labs(title = title, x = "", y = "Log10 length (nt)") +
             theme_classic() +
             theme(plot.title = element_text(hjust = 0.5),
@@ -488,8 +521,12 @@ plotTotExons <-
 #'
 #' @param title A character string specifying the title of the plot.
 #'
-#' @param gene A logical specifying whether to add the circRNA host gene names
-#' to the plot. Deafult value is FALSE.
+#' @param gene A logical specifying whether to show all the host gene names of
+#' the differentially expressed circRNAs to the plot. Deafult value is FALSE.
+#'
+#' @param geneSet A character vector specifying which host gene name of
+#' the differentially expressed circRNAs to show in the plot. Multiple host
+#' gene names can be specofied. E.g. c('TTN, RyR2')
 #'
 #' @param setxLim A logical specifying whether to set x scale limits.
 #' If TRUE the value in xlim will be used. Deafult value is FALSE.
@@ -550,6 +587,7 @@ volcanoPlot <- function(res,
     padj = 0.05,
     title = "",
     gene = FALSE,
+    geneSet = c(''),
     setxLim = FALSE,
     xlim = c(-8 , 8),
     setyLim = FALSE,
@@ -595,13 +633,13 @@ volcanoPlot <- function(res,
             size = 0.5
         ) +
         geom_vline(
-            xintercept = -1,
+            xintercept = -log2FC,
             linetype = "dashed",
             color = "black",
             size = 0.5
         ) +
         geom_vline(
-            xintercept = 1,
+            xintercept = log2FC,
             linetype = "dashed",
             color = "black",
             size = 0.5
@@ -610,6 +648,13 @@ volcanoPlot <- function(res,
     if (gene) {
         p <- .addGeneName(p, diffExpCirc, log2FC, padj)
     }
+
+    if (length(geneSet)>0){
+        diffExpCircFiltered <- diffExpCirc %>%
+            dplyr::filter(.data$gene %in% geneSet)
+        p <- .addGeneName(p, diffExpCircFiltered, log2FC, padj)
+    }
+
     return(p)
 }
 
@@ -669,7 +714,6 @@ volcanoPlot <- function(res,
 }
 
 
-
 #' @title Plot motifs analysis results
 #'
 #' @description The function plotMotifs() generates 2 bar charts showing the
@@ -689,21 +733,38 @@ volcanoPlot <- function(res,
 #'
 #' @param log2FC An integer specifying the log2FC cut-off. Default value is 1.
 #'
+#' NOTE: log2FC is calculated as follow: normalized number of occurences of
+#' each motif found in the foreground target sequences / normalized number of
+#' occurences of each motif found in the background target sequences.
+#'
+#' To avoid infinity as a value for fold change, 1 was added to number of occurences
+#' of each motif found in the foreground and background target sequences before
+#' the normalization.
+#'
+#' @param n An integer specifying the number of motifs cutoff.
+#' E.g. if 3 is specifiyed only motifs that are found at least 3 times in the
+#' foreground or background target sequences are retained.
+#' Deafaut value is 0.
+#'
+#' @param removeNegLog2FC A logical specifying whether to remove the RBPs having
+#' a negative log2FC. If TRUE then only positive log2FC will be visualized.
+#' Default value is FALSE.
+#'
 #' @param nf1 An integer specifying the normalization factor for the
-#' first data frame mergedMotifsFTS. The occurrences of each motif are divided
-#' by nf1. The normalized values are then used for fold-change calculation.
-#' Set this to the number of target sequences (e.g from detected
+#' first data frame mergedMotifsFTS. The occurrences of each motif plus 1 are
+#' divided by nf1. The normalized values are then used for fold-change calculation.
+#' Set this to the number or length of target sequences (e.g from detected
 #' back-spliced junctions) where the motifs were extracted from.
 #' Default value is 1.
 #'
 #' @param nf2 An integer specifying the normalization factor for the
-#' second data frame mergedMotifsBTS. The occurrences of each motif are divided
-#' by nf2. The normalized values are then used for fold-change calculation.
+#' second data frame mergedMotifsBTS. The occurrences of each motif plus 1 are
+#' divided by nf2. The The normalized values are then used for fold-change calculation.
 #' Set this to the number of target sequences (e.g from random
 #' back-spliced junctions) where the motifs were extracted from.
 #' Default value is 1.
 #'
-#' NOTE: By setting nf1 and nf2 equals to 1 the number of target sequences
+#' NOTE: If nf1 and nf2 is set equals to 1, the number or length of target sequences
 #' (e.g detected Vs randomly selected) where the motifs were extrated from,
 #' is supposed to be the same.
 #'
@@ -712,6 +773,9 @@ volcanoPlot <- function(res,
 #'
 #' @param df2Name A string specifying the name of the first data frame. This
 #' will be displayed in the legend of the plot. Deafult value is "background".
+#'
+#' @param angle An integer specifying the rotation angle of the axis labels.
+#' Default value is 0.
 #'
 #' @return A ggplot object.
 #'
@@ -756,6 +820,7 @@ volcanoPlot <- function(res,
 #'  motifsFTS <- getMotifs(
 #'      targetsFTS,
 #'      width = 6,
+#'      database = 'ATtRACT',
 #'      species = "Hsapiens",
 #'      rbp = TRUE,
 #'      reverse = FALSE)
@@ -763,6 +828,7 @@ volcanoPlot <- function(res,
 #' motifsBTS <- getMotifs(
 #'      targetsBTS,
 #'      width = 6,
+#'      database = 'ATtRACT',
 #'      species = "Hsapiens",
 #'      rbp = TRUE,
 #'      reverse = FALSE)
@@ -790,18 +856,28 @@ plotMotifs <-
     function(mergedMotifsFTS,
         mergedMotifsBTS,
         log2FC = 1,
+        n = 0,
+        removeNegLog2FC = FALSE,
         nf1 = 1,
         nf2 = 1,
         df1Name = "foreground",
-        df2Name = "background") {
+        df2Name = "background",
+        angle = 0) {
         mergedMotifsAll <-
             .getMergedMotifsAll(
                 mergedMotifsFTS,
                 mergedMotifsBTS,
                 log2FC,
+                n,
                 nf1,
                 nf2
             )
+
+        if(removeNegLog2FC){
+            mergedMotifsAll<- mergedMotifsAll %>%
+                dplyr::filter(log2FC >=0)
+        }
+
         p <- list()
         p[[1]] <-  mergedMotifsAll %>%
             ggplot(aes(x = .data$id,
@@ -829,7 +905,8 @@ plotMotifs <-
             labs(title = "", x = "id", y = "normalized count") +
             coord_flip() +
             theme_classic() +
-            theme(plot.title = element_text(angle = 90, hjust = 0.5)) +
+            theme(plot.title = element_text(angle = 90, hjust = 0.5),
+                  axis.text.x = element_text(angle = angle, hjust = 1)) +
             scale_fill_grey(name = "circRNA", labels = c(df1Name, df2Name))
 
         p[[3]] <- mergedMotifsAll %>%
@@ -842,6 +919,7 @@ plotMotifs <-
 .getMergedMotifsAll <- function(mergedMotifsFTS,
     mergedMotifsBTS,
     log2FC = 1,
+    n = 0,
     nf1 = 1,
     nf2 = 1) {
     mergedMotifsAll <-
@@ -855,17 +933,19 @@ plotMotifs <-
             foreground = ifelse(is.na(.data$foreground), 0, .data$foreground),
             background = ifelse(is.na(.data$background), 0, .data$background)
         ) %>%
+        dplyr::filter(.data$foreground >= n | .data$background >= n )%>%
         dplyr::mutate(
-            foregroundNorm = .data$foreground / nf1,
-            backgroundNorm = .data$background / nf2
+            foregroundNorm = (.data$foreground+1) / nf1,
+            backgroundNorm = (.data$background+1) / nf2
         ) %>%
-        dplyr::mutate(log2fc = log2((.data$foregroundNorm + 1) / (.data$backgroundNorm + 1))) %>%
+        dplyr::mutate(log2fc = log2(.data$foregroundNorm / .data$backgroundNorm)) %>%
         dplyr::filter(abs(.data$log2fc) >= log2FC) %>%
         dplyr::arrange(.data$log2fc) %>%
         dplyr::rename(log2FC = .data$log2fc) %>%
         dplyr::mutate(id = factor(.data$id, levels = .data$id)) %>%
         dplyr::mutate(motif.x = ifelse(is.na(.data$motif.x), .data$motif.y, .data$motif.x)) %>%
-        dplyr::rename(motif = .data$motif.x) %>%
+        dplyr::rename(motifF = .data$motif.x) %>%
+        dplyr::rename(motifB = .data$motif.y) %>%
         dplyr::select(
             .data$id,
             .data$foreground,
@@ -873,7 +953,8 @@ plotMotifs <-
             .data$foregroundNorm,
             .data$backgroundNorm,
             .data$log2FC,
-            .data$motif
+            .data$motifF,
+            .data$motifB
         )
     return(mergedMotifsAll)
 }

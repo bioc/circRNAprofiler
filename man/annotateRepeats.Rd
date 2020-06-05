@@ -4,8 +4,7 @@
 \alias{annotateRepeats}
 \title{Annotate repetitive elements}
 \usage{
-annotateRepeats(targets, annotationHubID = "AH5122",
-  complementary = TRUE)
+annotateRepeats(targets, annotationHubID = "AH5122", complementary = TRUE)
 }
 \arguments{
 \item{targets}{A list containing the target regions to analyze.
@@ -43,6 +42,8 @@ data("gtf")
 annotatedBSJs <- annotateBSJs(mergedBSJunctions[1, ], gtf)
 
 # Get genome
+if (requireNamespace("BSgenome.Hsapiens.UCSC.hg19", quietly = TRUE)){
+
 genome <- BSgenome::getBSgenome("BSgenome.Hsapiens.UCSC.hg19")
 
 # Retrieve targets
@@ -55,7 +56,11 @@ targets <- getSeqsFromGRs(
     )
 
 # Annotate repeats
-# repeats <-
-# annotateRepeats(targets, annotationHubID  = "AH5122", complementary = TRUE)
+
+ repeats <- annotateRepeats(targets, annotationHubID  = "AH5122", 
+ complementary = TRUE)
+
+}
+
 
 }

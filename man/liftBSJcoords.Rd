@@ -4,8 +4,11 @@
 \alias{liftBSJcoords}
 \title{LiftOver back-spliced junction coordinates}
 \usage{
-liftBSJcoords(backSplicedJunctions, map = "hg19ToMm9",
-  annotationHubID = "AH14155")
+liftBSJcoords(
+  backSplicedJunctions,
+  map = "hg19ToMm9",
+  annotationHubID = "AH14155"
+)
 }
 \arguments{
 \item{backSplicedJunctions}{A data frame containing the back-spliced junction
@@ -38,6 +41,6 @@ successful are reported.
 data("mergedBSJunctions")
 
 # LifOver the first 10 back-spliced junction coordinates
-# liftedBSJcoords <- liftBSJcoords(mergedBSJunctions[1:10,], map = "hg19ToMm9")
+liftedBSJcoords <- liftBSJcoords(mergedBSJunctions[1:10,], map = "hg19ToMm9")
 
 }

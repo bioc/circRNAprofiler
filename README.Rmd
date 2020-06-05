@@ -29,7 +29,7 @@ facilitate the interpretation of the results.
 
 ## Installation
 
-You can install circRNAprofiler using:
+You can install circRNAprofiler from Bioconductor using:
 ```{r, eval = FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
@@ -37,11 +37,16 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 BiocManager::install("circRNAprofiler")
 ```
 
-To download the development version on github use:
+To download the latest development version on github use:
 ```{r, eval = FALSE}
-BiocManager::install("Aufiero/circRNAprofiler")
-```
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
 
+# The following initializes usage of Bioc devel
+BiocManager::install(version='devel')
+
+BiocManager::install("circRNAprofiler")
+```
 
 ## Documentation
 Detailed information on using this package can be found in the package vignettes:
@@ -55,4 +60,7 @@ We work hard to ensure that circRNAprofiler is a powerful tool empowering your
 research. However, no software is free of bugs and issues, therefore we would 
 love to get feedback from our users.
 
+## Citation
+If you find this code useful in your research, please cite:
 
+Aufiero, S., Reckman, Y.J., Tijsen, A.J. et al. circRNAprofiler: an R-based computational framework for the downstream analysis of circular RNAs. BMC Bioinformatics 21, 164 (2020). https://doi.org/10.1186/s12859-020-3500-3

@@ -7,10 +7,13 @@
 #' generated with \code{\link{formatGTF}}.
 #'
 #' @param n Integer specifying the number of randomly selected transcripts
-#' from which random back-spliced junctions are extrated. Default value = 100.
+#' from which random back-spliced junctions are extracted. Default value = 100.
 #'
 #' @param f An integer specifying the fraction of single exon circRNAs that
 #' have to be present in the output data frame. Default value is 10.
+#' 
+#' @param setSeed An integer which is used for selecting random back-spliced 
+#' junctions. Default values is set to NULL. 
 #'
 #' @return A data frame.
 #'
@@ -25,12 +28,18 @@
 #' @importFrom rlang .data
 #' @import dplyr
 #' @export
-getRandomBSJunctions <- function(gtf, n = 100, f = 10) {
-     # Create an empty data frame
+getRandomBSJunctions <- function(gtf, n = 100, f = 10, setSeed=NULL) {
+   
+    if(!is.null(setSeed)){
+        seed<-setSeed
+    }else{
+        seed = NULL
+    }
+      # Create an empty data frame
     randomBSJunctions <-.createRandomBSJunctionsDF(n)
 
    # Select random BSEs from gtf
-    allBSEs <- .selectRandomBSEs(gtf, n, f)
+    allBSEs <- .selectRandomBSEs(gtf, n, f,seed)
 
     # For negative strand
     allBSEsNeg <- allBSEs[allBSEs$strand == "-",]
@@ -69,7 +78,7 @@ getRandomBSJunctions <- function(gtf, n = 100, f = 10) {
 
 
 # Create randomBSJunctions data frame
-.createRandomBSJunctionsDF <- function(n){
+.createRandomBSJunctionsDF <- function(n=100){
     basicColumns <- .getBasicColNames()
 
     # Create an empty data frame
@@ -81,48 +90,56 @@ getRandomBSJunctions <- function(gtf, n = 100, f = 10) {
 
 
 # Select random BSEs from gtf file
-.selectRandomBSEs<- function(gtf, n, f ){
-    # calculate the percentage of back-spliced junctions from sigle exons
-    c <- round((n / 100) * f, 0)
-
-    # Select one random exon from n randomly selected transcript
-    bsExons1 <- gtf %>%
+.selectRandomBSEs<- function(gtf, n=100, f = 10,seed=NULL){
+    
+    if(!is.null(seed)){
+      base::set.seed(seed)
+    }
+  # calculate the percentage of back-spliced junctions from single exons
+  c <- round((n / 100) * f, 0)
+  # Select two random back-spliced exons (up and down) from n randomly
+  # selected transcript
+  bsExons2 <- gtf %>%
+    dplyr::filter(.data$type == "exon") %>%
+    dplyr::group_by(.data$transcript_id) %>%
+    dplyr::filter(n() >= 3) %>%
+    dplyr::ungroup() %>%
+    dplyr::filter(.data$transcript_id %in%
+                    sample(unique(.data$transcript_id), n - c)) %>%
+    dplyr::group_by(.data$transcript_id) %>%
+    dplyr::sample_n(2) %>%
+    dplyr::arrange(.data$exon_number)
+  
+    if(c !=0){
+      # Select one random exon from n randomly selected transcript
+      bsExons1 <- gtf %>%
         dplyr::filter(.data$type == "exon") %>%
         dplyr::group_by(.data$transcript_id) %>%
         dplyr::filter(n() >= 3) %>%
         dplyr::ungroup() %>%
-        dplyr::filter(.data$transcript_id %in% sample(unique(.data$transcript_id), c)) %>%
+        dplyr::filter(.data$transcript_id %in% base::sample(unique(.data$transcript_id), c)) %>%
         dplyr::group_by(.data$transcript_id) %>%
         dplyr::sample_n(1) %>%
         dplyr::arrange(.data$exon_number)
-
-    # If only one exon is picked then the row is duplicated. This step is only
-    # made to simply the code below without introducing an additional if
-    # statment when a single exon is present in the isoform sampled in
-    # the above step.
-    bsExons1 <- dplyr::bind_rows(bsExons1, bsExons1)
-
-    # Select two random back-spliced exons (up and down) from n randomly
-    # selected transcript
-    bsExons2 <- gtf %>%
-        dplyr::filter(.data$type == "exon") %>%
-        dplyr::group_by(.data$transcript_id) %>%
-        dplyr::filter(n() >= 3) %>%
-        dplyr::ungroup() %>%
-        dplyr::filter(.data$transcript_id %in%
-                sample(unique(.data$transcript_id), n - c)) %>%
-        dplyr::group_by(.data$transcript_id) %>%
-        dplyr::sample_n(2) %>%
-        dplyr::arrange(.data$exon_number)
-
-    # Join the 2 data frame bsExons1 and bsExons2
-    bsExons12 <-  dplyr::bind_rows(bsExons1, bsExons2)
-
+      
+      # If only one exon is picked then the row is duplicated. This step is only
+      # made to simplify the code below without introducing an additional if
+      # statement when a single exon is present in the isoform sampled in
+      # the above step.
+      bsExons1 <- dplyr::bind_rows(bsExons1, bsExons1)
+      # Join the 2 data frame bsExons1 and bsExons2
+      bsExons12 <-  dplyr::bind_rows(bsExons1, bsExons2)
+    }else{
+      bsExons12 <-  bsExons2
+    }
+ 
     # Align duplicates on the same row
     indexDup <- which(duplicated(bsExons12$transcript_id))
     duplicates <- bsExons12[indexDup,]
+    colnames(duplicates)<- paste0(colnames(duplicates),'1')
+    
     cleanedDF <- bsExons12[-indexDup,]
-    mt <- match(cleanedDF$transcript_id, duplicates$transcript_id)
+    mt <- match(cleanedDF$transcript_id, duplicates$transcript_id1)
 
     allBSEs <- dplyr::bind_cols(cleanedDF, duplicates[mt,])
 

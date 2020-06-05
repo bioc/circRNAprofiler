@@ -4,14 +4,16 @@
 \name{ahRepeatMasker}
 \alias{ahRepeatMasker}
 \title{ahRepeatMasker}
-\format{A data frame with 84 rows and 3 columns
+\format{
+A data frame with 84 rows and 3 columns
 \describe{
     \item{id}{is the AnnotationHub id}
     \item{species}{is the species}
     \item{genome}{is the genome assembly}
-}}
+}
+}
 \usage{
-ahRepeatMasker
+data(ahRepeatMasker)
 }
 \description{
 A data frame containing the AnnotationHub id related to the repeatMasker db,

@@ -64,7 +64,7 @@ getBackSplicedJunctions <-  function(gtf, pathToExperiment = NULL) {
                 backSplicedJunctionsTool <- .createBackSplicedJunctionsDF()
 
                 for (i in seq_along(experiment$fileName)) {
-                    # Read the file contaning the prediction one at the time
+                    # Read the file containing the prediction one at the time
                     pathToFile <- file.path(detectionToolsUsed$name[j],
                         experiment$fileName[i])
 
@@ -114,7 +114,8 @@ getBackSplicedJunctions <-  function(gtf, pathToExperiment = NULL) {
         }
     } else{
         backSplicedJunctions <- data.frame()
-        cat("experiment.txt not found or empty. The analysis can not start.")
+        cat("experiment.txt not found (or empty). The analysis can not start.
+            Type ?getBackSplicedJunctions and see pathToExperiment param.\n")
     }
 
     return(backSplicedJunctions)
@@ -178,6 +179,13 @@ getDetectionTools <- function() {
 #' See \code{\link{getDetectionTools}}  for more detail about the code
 #' corresponding to each circRNA detection tool.
 #'
+#' NOTE: Since different detection tools can report sligtly different coordinates
+#' before grouping the back-spliced junctions, it is possible to fix the latter
+#' using the gtf file. In this way the back-spliced junctions coordinates will
+#' correspond to the exon coordinates reported in the gtf file. A difference of
+#' nucleodites is allowed between the bsj and exon coordinates.
+#' See param fixBSJsWithGTF.
+#'
 #' @param backSplicedJunctions A data frame containing back-spliced junction
 #' coordinates and counts generated with \code{\link{getBackSplicedJunctions}}.
 #'
@@ -202,6 +210,9 @@ getDetectionTools <- function() {
 #' FALSE. A circRNA is defined antisense if the strand reported in the prediction
 #' results is different from the strand reported in the genome annotation file.
 #' The antisense circRNAs are removed from the returned data frame.
+#'
+#' @param fixBSJsWithGTF A logical specifying whether to fix the back-spliced
+#' junctions coordinates using the GTF file. Default value is FALSE.
 #'
 #' @return A data frame.
 #'
@@ -229,19 +240,31 @@ mergeBSJunctions <-
     function(backSplicedJunctions,
         gtf,
         pathToExperiment = NULL,
-        exportAntisense = FALSE) {
+        exportAntisense = FALSE,
+        fixBSJsWithGTF= FALSE) {
         # Read experiment.txt
         experiment <- .readExperiment(pathToExperiment)
         if (nrow(experiment) > 0) {
+
+            if(fixBSJsWithGTF){
+                # Fix coordiates with GTF
+                backSplicedJunctionsFixed<- .fixCoordsWithGTF(backSplicedJunctions, gtf)
+                id <- .getID(backSplicedJunctionsFixed)
+                backSplicedJunctionsFixed$id <- id
+            }else{
+                backSplicedJunctionsFixed<-backSplicedJunctions
+            }
+
+
             # Find and merge commonly identified back-spliced junctions
-            mergedBSJunctions <- backSplicedJunctions %>%
+            mergedBSJunctions <- backSplicedJunctionsFixed %>%
                 dplyr::mutate(mean = rowMeans(.[, experiment$label])) %>%
                 dplyr::group_by(.data$strand,
                     .data$chrom,
                     .data$startUpBSE,
                     .data$endDownBSE) %>%
                 dplyr::arrange(desc(mean)) %>%
-                dplyr::mutate(mergedTools = paste(sort(.data$tool), collapse = ",")) %>%
+                dplyr::mutate(mergedTools = paste(sort(unique(.data$tool)), collapse = ",")) %>%
                 dplyr::filter(row_number() == 1) %>%
                 dplyr::ungroup() %>%
                 dplyr::select(-c(.data$tool, .data$mean)) %>%
@@ -267,7 +290,8 @@ mergeBSJunctions <-
 
         } else{
             mergedBSJunctionsClenead <- backSplicedJunctions
-            cat("experiment.txt not found or empty, data frame can not be merged")
+            cat("experiment.txt not found in wd (or empty), data frame can not be merged.
+                Type ?mergeBSJunctions and see pathToExperiment param.\n")
         }
 
         return(mergedBSJunctionsClenead)
@@ -286,6 +310,17 @@ mergeBSJunctions <-
         ))))
     colnames(backSplicedJunctions) <-
         c(basicColumns, addColNames)
+    
+    backSplicedJunctions$id <- as.character(backSplicedJunctions$id)
+    backSplicedJunctions$gene  <- as.character(backSplicedJunctions$gene )
+    backSplicedJunctions$strand <- as.character(backSplicedJunctions$strand)
+    backSplicedJunctions$chrom  <- as.character(backSplicedJunctions$chrom )
+    backSplicedJunctions$startUpBSE  <- as.numeric(backSplicedJunctions$startUpBSE )
+    backSplicedJunctions$endDownBSE <- as.numeric(backSplicedJunctions$endDownBSE)
+    if(!is.null(addColNames)){
+        backSplicedJunctions[,7]<- as.character(backSplicedJunctions[,7])
+        
+    }
 
     return(backSplicedJunctions)
 }
@@ -322,13 +357,14 @@ mergeBSJunctions <-
             dplyr::select(.data$gene_name, .data$strand) %>%
             dplyr::group_by(.data$gene_name) %>%
             dplyr::filter(row_number() == 1)
+        colnames(shrinkedGTF)<- paste0(colnames(shrinkedGTF),'1')
 
         mt <-
-            match(mergedBSJunctions$gene, shrinkedGTF$gene_name)
+            match(mergedBSJunctions$gene, shrinkedGTF$gene_name1)
         antisenseCircRNAs <-
             dplyr::bind_cols(mergedBSJunctions, shrinkedGTF[mt,]) %>%
             dplyr::filter(.data$strand != .data$strand1) %>%
-            dplyr::select(-c(.data$gene_name, .data$strand1))
+            dplyr::select(-c(.data$gene_name1, .data$strand1))
 
         if (exportAntisense) {
             utils::write.table(

@@ -26,7 +26,8 @@
 #' @param totalMatches An integer specifying the total number of matches that
 #' have to be found between the seed region of the miR and the seed site of the
 #' target sequence. If the total number of matches found is less than the
-#' cut-off, the seed site is discarded. Default value is 7.
+#' cut-off, the seed site is discarded. The maximun number of possible matches
+#' is 7. Default value is 7.
 #'
 #' @param maxNonCanonicalMatches An integer specifying the max number of
 #' non-canonical matches (G:U) allowed between the seed region of the miR and
@@ -58,6 +59,7 @@
 #' annotatedBSJs <- annotateBSJs(mergedBSJunctions[1, ], gtf)
 #'
 #' # Get genome
+#' if (requireNamespace("BSgenome.Hsapiens.UCSC.hg19", quietly = TRUE)){
 #' genome <- BSgenome::getBSgenome("BSgenome.Hsapiens.UCSC.hg19")
 #'
 #' # Retrieve target sequences.
@@ -76,6 +78,8 @@
 #'    totalMatches = 6,
 #'    maxNonCanonicalMatches = 1,
 #'    pathToMiRs )
+#' }
+#' 
 #'
 #' @importFrom IRanges reverse
 #' @importFrom readr read_tsv
@@ -90,6 +94,8 @@
 getMiRsites <- function(targets, miRspeciesCode = "hsa",
     miRBaseLatestRelease = TRUE, totalMatches = 7,
     maxNonCanonicalMatches = 1, pathToMiRs = NULL) {
+
+
     # Retrieve miR sequences from miRBase or from mature.fa file
     microRNAs <- .getMiRseqs(miRBaseLatestRelease, miRspeciesCode, pathToMiRs)
 
